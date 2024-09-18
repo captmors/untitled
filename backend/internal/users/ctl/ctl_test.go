@@ -12,7 +12,6 @@ import (
 	"untitled/internal/users/mdl"
 	"untitled/internal/users/repo"
 	"untitled/internal/users/svc"
-	"untitled/internal/users/urls"
 	"untitled/pkg/dockermocker"
 
 	"github.com/gin-gonic/gin"
