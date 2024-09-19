@@ -35,3 +35,6 @@ func (s *UserSvc) GetUserByID(id uint) (*mdl.User, error) {
 	return s.userRepo.FindByID(id)
 }
 
+func (s *UserSvc) GetUserByEmail(email string) (*mdl.User, error) {
+    return s.userRepo.FindByEmail(email)
+}

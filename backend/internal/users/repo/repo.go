@@ -23,3 +23,9 @@ func (r *UserRepo) FindByID(id uint) (*mdl.User, error) {
 	err := r.db.First(&user, id).Error
 	return &user, err
 }
+
+func (r *UserRepo) FindByEmail(email string) (*mdl.User, error) {
+    var user mdl.User
+    err := r.db.Where("email = ?", email).First(&user).Error
+    return &user, err
+}
