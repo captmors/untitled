@@ -13,10 +13,19 @@ func NewUserSvc(userRepo *repo.UserRepo) *UserSvc {
 	return &UserSvc{userRepo: userRepo}
 }
 
-func (s *UserSvc) CreateUser(name, email, password string) (*mdl.User, error) {
-	user := &mdl.User{Name: name, Email: email, Password: password}
-	err := s.userRepo.Create(user)
+func (svc *UserSvc) CreateUser(name, email, password string) (*mdl.User, error) {
+	hashedPassword, err := hashPassword(password)
 	if err != nil {
+		return nil, err
+	}
+
+	user := &mdl.User{
+		Name:     name,
+		Email:    email,
+		Password: hashedPassword,
+	}
+
+	if err := svc.userRepo.CreateUser(user); err != nil {
 		return nil, err
 	}
 	return user, nil
