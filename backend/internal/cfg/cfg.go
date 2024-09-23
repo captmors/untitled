@@ -1,12 +1,11 @@
-// cfg/config.go
-
 package cfg
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
 )
@@ -14,6 +13,13 @@ import (
 var (
 	RootDir     string
 	DatabaseUrl string
+	JwtSecret   string
+
+	// default
+	LogDir         string
+	LogDefaultFile string
+	LogToFile      bool
+	TestLogToFile  bool
 )
 
 func init() {
@@ -32,4 +38,25 @@ func init() {
 	}
 
 	DatabaseUrl = os.Getenv("DATABASE_URL")
+	JwtSecret = os.Getenv("JWT_SECRET")
+
+	// default
+	LogDir = filepath.Join(RootDir, getEnvOr("LOG_DIR", "logs"))
+	LogDefaultFile = getEnvOr("LOG_DEFAULT_FILE", "log.log")
+	LogToFile = getEnvOrBool("LOG_TO_FILE", false)
+	TestLogToFile = getEnvOrBool("TEST_LOG_TO_FILE", false)
+}
+
+func getEnvOr(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
+func getEnvOrBool(key string, fallback bool) bool {
+	if value, ok := os.LookupEnv(key); ok {
+		return value == "true" || value == "1" || value == "True" || value == "TRUE"
+	}
+	return fallback
 }

@@ -2,8 +2,9 @@ package dockermocker
 
 import (
 	"fmt"
-	"log"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -36,6 +37,7 @@ func NewDockerTest(exposedPort string, containerLifetime uint) *DockerTest {
 		Port:     exposedPort,
 	}
 }
+
 // initTestDocker starts a PostgreSQL container for testing with the given port.
 // It configures Docker options and sets an expiration time for the resource.
 func initTestDocker(exposedPort string, containerLifetime uint) (*dockertest.Pool, *dockertest.Resource) {
@@ -71,7 +73,7 @@ func initTestDocker(exposedPort string, containerLifetime uint) (*dockertest.Poo
 	}
 
 	log.Println("Trying to connect to the database...")
-	
+
 	pool.MaxWait = 120 * time.Second
 	if err = pool.Retry(func() error {
 		db := connectToDatabase(resource, exposedPort)

@@ -25,7 +25,7 @@ func (svc *UserSvc) CreateUser(name, email, password string) (*mdl.User, error) 
 		Password: hashedPassword,
 	}
 
-	if err := svc.userRepo.CreateUser(user); err != nil {
+	if err := svc.userRepo.Create(user); err != nil {
 		return nil, err
 	}
 	return user, nil

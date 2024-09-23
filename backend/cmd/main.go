@@ -1,8 +1,9 @@
 package main
 
 import (
-	"log"
 	"untitled/internal/cfg"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {

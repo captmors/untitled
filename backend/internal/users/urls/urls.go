@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupUrls(r *gin.Engine, userCtl *ctl.UserCtl) {
+func SetupUserUrls(r *gin.Engine, userCtl *ctl.UserCtl) {
 	userRoutes := r.Group("/users")
 	{
 		userRoutes.GET("/:id", userCtl.GetUserByID)

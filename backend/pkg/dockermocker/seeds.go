@@ -1,8 +1,9 @@
 package dockermocker
 
 import (
-	"log"
 	"reflect"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/go-faker/faker/v4"
 	"gorm.io/gorm"
@@ -27,7 +28,7 @@ func NewUniformSeeder(model interface{}) *UniformSeeder {
 // Run generates and inserts n instances of the model into the database.
 func (s *UniformSeeder) Run(db *gorm.DB, n int) error {
 	modelType := reflect.TypeOf(s.modelPrototype)
-	
+
 	for i := 0; i < n; i++ {
 		modelInstance := reflect.New(modelType.Elem()).Interface()
 

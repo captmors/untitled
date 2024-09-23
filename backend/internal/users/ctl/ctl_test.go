@@ -4,17 +4,22 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 
+	"untitled/internal/cfg"
+	"untitled/internal/testutils"
 	"untitled/internal/users/ctl"
 	"untitled/internal/users/mdl"
+	"untitled/internal/users/mw"
 	"untitled/internal/users/repo"
 	"untitled/internal/users/svc"
 	"untitled/pkg/dockermocker"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"gorm.io/gorm"
@@ -22,27 +27,56 @@ import (
 
 var (
 	router     *gin.Engine
+	authRouter *gin.Engine
 	db         *gorm.DB
-	userCtl    *ctl.UserCtl
 	dockerTest *dockermocker.DockerTest
+	logFiles   []*os.File
 )
 
 var _ = ginkgo.BeforeSuite(func() {
-	dockerTest = dockermocker.NewDockerTest("1488", 120)
+	dockerTest = dockermocker.NewDockerTest(testutils.GetUniquePort(), 120)
 	db = dockerTest.OpenDatabaseConnection()
 	db.AutoMigrate(&mdl.User{})
 
 	userRepo := repo.NewUserRepo(db)
 	userSvc := svc.NewUserSvc(userRepo)
-	userCtl = ctl.NewUserCtl(userSvc)
+	userCtl := ctl.NewUserCtl(userSvc)
 
 	router = gin.Default()
 	router.POST("/users", userCtl.CreateUser)
 	router.GET("/users/:id", userCtl.GetUserByID)
+
+	// auth
+	authSvc := svc.NewAuthSvc(userRepo, []byte(cfg.JwtSecret))
+	authCtl := ctl.NewAuthCtl(authSvc)
+
+	authMWConfig := mw.AuthMWConfig{
+		JwtKey: []byte(cfg.JwtSecret),
+		Claims: func() jwt.Claims {
+			return &mdl.Claims{}
+		},
+	}
+
+	authRouter = gin.Default()
+	authRouter.Use(mw.AuthMW(authMWConfig))
+	authRouter.POST("/auth/register", authCtl.Register)
+	authRouter.POST("/auth/login", authCtl.Login)
 })
 
 var _ = ginkgo.AfterSuite(func() {
 	dockerTest.Close()
+
+	for _, f := range logFiles {
+		if f == nil {
+			continue
+		}
+
+		err := f.Close()
+		if err != nil {
+			// ok
+		}
+	}
+	logFiles = nil
 })
 
 var _ = ginkgo.Describe("User API", func() {
@@ -107,7 +141,7 @@ var _ = ginkgo.Describe("User API", func() {
 	})
 })
 
-func TestApi(t *testing.T) {
+func TestUsersApi(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "User API Suite")
+	ginkgo.RunSpecs(t, "Users API Suite")
 }
