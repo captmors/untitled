@@ -2,9 +2,6 @@
 
 APP_NAME=$1
 
-mkdir -p cmd/$APP_NAME
-touch cmd/$APP_NAME/main.go
-
 mkdir -p internal/$APP_NAME/mdl
 touch internal/$APP_NAME/mdl/mdl.go
 
