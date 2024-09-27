@@ -27,7 +27,10 @@ func Init() *gin.Engine {
 	db := initDB()
 	initApps(r, db)
 
-	tus.InitTusUploader(r, UploadDir)
+	tus.InitTusUploader(r, tus.TusHandlerCfg{
+		MaxFileSize: MaxUploadFileSize,
+		UploadDir:   UploadDir,
+	})
 
 	return r
 }
@@ -60,7 +63,7 @@ func initApps(r *gin.Engine, db *gorm.DB) {
 
 // ENV:
 // - LOG_TO_FILE: bool
-func  initLogging() *os.File {
+func initLogging() *os.File {
 	logDir := filepath.Join(LogDir)
 	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
 		log.Fatalf("Failed to create log directory: %v", err)

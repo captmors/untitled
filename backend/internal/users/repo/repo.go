@@ -18,7 +18,7 @@ func (r *UserRepo) Create(user *mdl.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *UserRepo) FindByID(id uint) (*mdl.User, error) {
+func (r *UserRepo) FindByID(id int64) (*mdl.User, error) {
 	var user mdl.User
 	err := r.db.First(&user, id).Error
 	return &user, err

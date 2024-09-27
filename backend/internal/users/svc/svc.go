@@ -31,10 +31,10 @@ func (svc *UserSvc) CreateUser(name, email, password string) (*mdl.User, error) 
 	return user, nil
 }
 
-func (s *UserSvc) GetUserByID(id uint) (*mdl.User, error) {
-	return s.userRepo.FindByID(id)
-}
-
-func (s *UserSvc) GetUserByEmail(email string) (*mdl.User, error) {
-    return s.userRepo.FindByEmail(email)
+func (svc *UserSvc) GetUserByID(id int64) (*mdl.User, error) {
+    user, err := svc.userRepo.FindByID(id)
+    if err != nil {
+        return nil, err
+    }
+    return user, nil
 }

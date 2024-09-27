@@ -26,7 +26,7 @@ func NewAuthSvc(userRepo *repo.UserRepo, jwtKey []byte) *AuthSvc {
 func (a *AuthSvc) GenerateToken(user *mdl.User) (string, error) {
 	claims := &jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			Subject:   strconv.Itoa(int(user.ID)),
+			Subject: strconv.FormatInt(int64(user.ID), 10),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -55,12 +55,11 @@ func (a *AuthSvc) ValidateToken(tokenStr string) (*mdl.User, error) {
 		return nil, errors.New("invalid token")
 	}
 
-	userID, err := strconv.Atoi(claims.Subject)
+	userID, err := strconv.ParseInt(claims.Subject, 10, 64)
 	if err != nil {
 		return nil, err
 	}
-
-	return a.userRepo.FindByID(uint(userID))
+	return a.userRepo.FindByID(userID)
 }
 
 func hashPassword(password string) (string, error) {

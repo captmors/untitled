@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 
@@ -16,11 +17,12 @@ var (
 	JwtSecret   string
 
 	// default
-	LogDir         string
-	LogDefaultFile string
-	LogToFile      bool
-	TestLogToFile  bool
-	UploadDir      string
+	LogDir            string
+	LogDefaultFile    string
+	LogToFile         bool
+	TestLogToFile     bool
+	UploadDir         string
+	MaxUploadFileSize int64
 )
 
 func init() {
@@ -48,6 +50,7 @@ func init() {
 	TestLogToFile = getEnvOrBool("TEST_LOG_TO_FILE", false)
 
 	UploadDir = filepath.Join(RootDir, getEnvOr("UPLOAD_DIR", "uploads"))
+	MaxUploadFileSize = getEnvOrInt64("MAX_UPLOAD_FILE_SIZE", 50 * 1024 * 1024)
 }
 
 func getEnvOr(key, fallback string) string {
@@ -60,6 +63,15 @@ func getEnvOr(key, fallback string) string {
 func getEnvOrBool(key string, fallback bool) bool {
 	if value, ok := os.LookupEnv(key); ok {
 		return value == "true" || value == "1" || value == "True" || value == "TRUE"
+	}
+	return fallback
+}
+
+func getEnvOrInt64(key string, fallback int64) int64 {
+	if value, ok := os.LookupEnv(key); ok {
+		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
+			return intValue
+		}
 	}
 	return fallback
 }

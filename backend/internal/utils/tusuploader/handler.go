@@ -1,20 +1,22 @@
 package tusuploader
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	tusd "github.com/tus/tusd/v2/pkg/handler"
 )
 
 const (
-	maxFileSize = 50 * 1024 * 1024
-	rGroup      = "/upload"
+	rGroup = "/upload"
 )
 
-func InitTusUploader(r *gin.Engine, uploadDir string) {
-	tusHandler, err := NewTusHandler(uploadDir)
+type TusHandlerCfg struct {
+	MaxFileSize int64
+	UploadDir   string
+}
+
+func InitTusUploader(r *gin.Engine, cfg TusHandlerCfg) {
+	tusHandler, err := NewTusHandler(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create TUS tusd: %v", err)
 	}
@@ -22,15 +24,15 @@ func InitTusUploader(r *gin.Engine, uploadDir string) {
 	setupTusRoutes(r, tusHandler)
 }
 
-func NewTusHandler(uploadDir string) (*tusd.UnroutedHandler, error) {
-	store := NewLocalStore(uploadDir)
+func NewTusHandler(cfg TusHandlerCfg) (*tusd.UnroutedHandler, error) {
+	store := NewLocalStore(cfg.UploadDir)
 	composer := tusd.NewStoreComposer()
 	store.UseIn(composer)
 
 	config := tusd.Config{
 		BasePath:              rGroup,
 		StoreComposer:         composer,
-		MaxSize:               maxFileSize,
+		MaxSize:               cfg.MaxFileSize,
 		NotifyCompleteUploads: true,
 	}
 	tusHandler, err := tusd.NewUnroutedHandler(config)
@@ -50,4 +52,3 @@ func setupTusRoutes(r *gin.Engine, tusHandler *tusd.UnroutedHandler) {
 		tusRoutes.PATCH("/:id", gin.WrapF(tusHandler.PatchFile))
 	}
 }
-
