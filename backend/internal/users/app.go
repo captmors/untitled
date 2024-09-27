@@ -2,7 +2,6 @@ package users
 
 import (
 	"untitled/internal/users/ctl"
-	"untitled/internal/users/mdl"
 	"untitled/internal/users/mw"
 	"untitled/internal/users/repo"
 	"untitled/internal/users/svc"
@@ -27,7 +26,7 @@ func NewUserApp(db *gorm.DB, jwtKey []byte) *UserApp {
 	authMWConfig := mw.AuthMWConfig{
 		JwtKey: jwtKey,
 		Claims: func() jwt.Claims {
-			return &mdl.Claims{}
+			return &jwt.RegisteredClaims{}
 		},
 	}
 

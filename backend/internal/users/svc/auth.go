@@ -25,8 +25,8 @@ func NewAuthSvc(userRepo *repo.UserRepo, jwtKey []byte) *AuthSvc {
 
 func (a *AuthSvc) GenerateToken(user *mdl.User) (string, error) {
 	claims := &jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		Subject:   strconv.Itoa(int(user.ID)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			Subject:   strconv.Itoa(int(user.ID)),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

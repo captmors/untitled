@@ -53,7 +53,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	authMWConfig := mw.AuthMWConfig{
 		JwtKey: []byte(cfg.JwtSecret),
 		Claims: func() jwt.Claims {
-			return &mdl.Claims{}
+			return &jwt.RegisteredClaims{}
 		},
 	}
 

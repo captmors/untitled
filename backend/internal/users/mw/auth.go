@@ -3,7 +3,6 @@ package mw
 import (
 	"net/http"
 	"strings"
-	"untitled/internal/users/mdl"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -47,8 +46,8 @@ func AuthMW(config AuthMWConfig) gin.HandlerFunc {
 			return
 		}
 
-		if customClaims, ok := claims.(*mdl.Claims); ok {
-			c.Set("email", customClaims.Email)
+		if claims, ok := claims.(*jwt.RegisteredClaims); ok {
+			c.Set("UserID", claims.Subject)
 		}
 
 		c.Next()
