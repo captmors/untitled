@@ -20,6 +20,7 @@ var (
 	LogDefaultFile string
 	LogToFile      bool
 	TestLogToFile  bool
+	UploadDir      string
 )
 
 func init() {
@@ -45,6 +46,8 @@ func init() {
 	LogDefaultFile = getEnvOr("LOG_DEFAULT_FILE", "log.log")
 	LogToFile = getEnvOrBool("LOG_TO_FILE", false)
 	TestLogToFile = getEnvOrBool("TEST_LOG_TO_FILE", false)
+
+	UploadDir = filepath.Join(RootDir, getEnvOr("UPLOAD_DIR", "uploads"))
 }
 
 func getEnvOr(key, fallback string) string {

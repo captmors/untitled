@@ -9,6 +9,7 @@ import (
 	"untitled/internal/interfaces"
 	"untitled/internal/users"
 	"untitled/internal/users/mdl"
+	tus "untitled/internal/utils/tusuploader"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -16,13 +17,17 @@ import (
 	"gorm.io/gorm"
 )
 
-func Init() *gin.Engine {
+func init() {
 	initLogging()
+}
 
+func Init() *gin.Engine {
 	r := gin.Default()
 
 	db := initDB()
 	initApps(r, db)
+
+	tus.InitTusUploader(r, UploadDir)
 
 	return r
 }
@@ -54,8 +59,8 @@ func initApps(r *gin.Engine, db *gorm.DB) {
 }
 
 // ENV:
-// - LogToFile: bool
-func initLogging() *os.File {
+// - LOG_TO_FILE: bool
+func  initLogging() *os.File {
 	logDir := filepath.Join(LogDir)
 	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
 		log.Fatalf("Failed to create log directory: %v", err)
