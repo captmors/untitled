@@ -9,6 +9,7 @@ import (
 	"untitled/internal/interfaces"
 	"untitled/internal/users"
 	"untitled/internal/users/mdl"
+	ms "untitled/internal/musicstorage"
 	tus "untitled/internal/utils/tusuploader"
 
 	"github.com/gin-gonic/gin"
@@ -26,11 +27,6 @@ func Init() *gin.Engine {
 
 	db := initDB()
 	initApps(r, db)
-
-	tus.InitTusUploader(r, tus.TusHandlerCfg{
-		MaxFileSize: MaxUploadFileSize,
-		UploadDir:   UploadDir,
-	})
 
 	return r
 }
@@ -53,8 +49,18 @@ func initDB() *gorm.DB {
 }
 
 func initApps(r *gin.Engine, db *gorm.DB) {
+	// Users (auth)
 	usersApp := users.NewUserApp(db, []byte(JwtSecret))
 	apps = append(apps, usersApp)
+
+	// MusicStorage
+	tusHandler := tus.InitTusUploader(r, tus.TusHandlerCfg{
+		MaxFileSize: MaxUploadFileSize,
+		UploadDir:   UploadDir,
+	})
+
+	musicStorageApp := ms.NewMusicStorageApp(db, tusHandler)
+	apps = append(apps, musicStorageApp)
 
 	for _, app := range apps {
 		app.Init(r)

@@ -15,13 +15,15 @@ type TusHandlerCfg struct {
 	UploadDir   string
 }
 
-func InitTusUploader(r *gin.Engine, cfg TusHandlerCfg) {
+func InitTusUploader(r *gin.Engine, cfg TusHandlerCfg) (*tusd.UnroutedHandler) {
 	tusHandler, err := NewTusHandler(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create TUS tusd: %v", err)
 	}
 
 	setupTusRoutes(r, tusHandler)
+
+	return tusHandler
 }
 
 func NewTusHandler(cfg TusHandlerCfg) (*tusd.UnroutedHandler, error) {
