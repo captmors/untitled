@@ -13,8 +13,20 @@ import (
 
 var (
 	RootDir     string
-	DatabaseUrl string
 	JwtSecret   string
+
+	// PostgreSQL
+    PostgresUser     string
+    PostgresPassword string
+    PostgresDB       string
+
+    // MongoDB
+    MongoUser     string
+    MongoPassword string
+
+    // ElasticSearch
+    ElasticUser     string
+    ElasticPassword string
 
 	// default
 	LogDir            string
@@ -37,11 +49,20 @@ func init() {
 			log.Fatal("Error loading .env file:", err)
 		}
 	} else {
-		log.Println(".env file not found, using system environment variables.")
+		log.Warning(".env file not found, using system environment variables.")
 	}
 
-	DatabaseUrl = os.Getenv("DATABASE_URL")
 	JwtSecret = os.Getenv("JWT_SECRET")
+
+	PostgresUser = os.Getenv("POSTGRES_USER")
+    PostgresPassword = os.Getenv("POSTGRES_PASSWORD")
+    PostgresDB = os.Getenv("POSTGRES_DB")
+
+    MongoUser = os.Getenv("MONGO_INITDB_ROOT_USERNAME")
+    MongoPassword = os.Getenv("MONGO_INITDB_ROOT_PASSWORD")
+
+    ElasticUser = os.Getenv("ELASTICSEARCH_USERNAME")
+    ElasticPassword = os.Getenv("ELASTICSEARCH_PASSWORD")
 
 	// default
 	LogDir = filepath.Join(RootDir, getEnvOr("LOG_DIR", "logs"))

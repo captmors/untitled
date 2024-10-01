@@ -1,19 +1,24 @@
 package cfg
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"untitled/internal/interfaces"
+	ms "untitled/internal/musicstorage"
 	"untitled/internal/users"
 	"untitled/internal/users/mdl"
-	ms "untitled/internal/musicstorage"
 	tus "untitled/internal/utils/tusuploader"
+
+	"github.com/elastic/go-elasticsearch/v8"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -25,8 +30,11 @@ func init() {
 func Init() *gin.Engine {
 	r := gin.Default()
 
-	db := initDB()
-	initApps(r, db)
+	pgDB := initPostgres()
+    mongoDB := initMongoDB()
+    esClient := initElasticSearch()
+
+	initApps(r, pgDB, mongoDB, esClient)
 
 	return r
 }
@@ -35,36 +43,47 @@ var (
 	apps []interfaces.App
 )
 
-func initDB() *gorm.DB {
-	DB, err := gorm.Open(postgres.Open(DatabaseUrl), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Error connecting to database:", err)
-	}
+func initPostgres() *gorm.DB {
+    PostgresUser := os.Getenv("POSTGRES_USER")
+    PostgresPassword := os.Getenv("POSTGRES_PASSWORD")
+    PostgresDB := os.Getenv("POSTGRES_DB")
 
-	if err := DB.AutoMigrate(&mdl.User{}); err != nil {
-		log.Fatal("Error migrating database:", err)
-	}
+    dsn := fmt.Sprintf("host=localhost user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC",
+        PostgresUser, PostgresPassword, PostgresDB)
 
-	return DB
+    DB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+    if err != nil {
+        log.Fatal("Error connecting to database:", err)
+		return nil
+    }
+
+    if err := DB.AutoMigrate(&mdl.User{}); err != nil {
+        log.Fatal("Error migrating database:", err)
+    }
+
+	log.Info("Connected to PostgreSQL!")
+
+    return DB
 }
 
-func initApps(r *gin.Engine, db *gorm.DB) {
-	// Users (auth)
-	usersApp := users.NewUserApp(db, []byte(JwtSecret))
-	apps = append(apps, usersApp)
 
-	// MusicStorage
-	tusHandler := tus.InitTusUploader(r, tus.TusHandlerCfg{
-		MaxFileSize: MaxUploadFileSize,
-		UploadDir:   UploadDir,
-	})
+func initApps(r *gin.Engine, pgDB *gorm.DB, mongoDB *mongo.Client, esClient *elasticsearch.Client) {
+    // Users (auth)
+    usersApp := users.NewUserApp(pgDB, []byte(JwtSecret)) 
+    apps = append(apps, usersApp)
 
-	musicStorageApp := ms.NewMusicStorageApp(db, tusHandler)
-	apps = append(apps, musicStorageApp)
+    // MusicStorage (Mongo и ElasticSearch)
+    tusHandler := tus.InitTusUploader(r, tus.TusHandlerCfg{
+        MaxFileSize: MaxUploadFileSize,
+        UploadDir:   UploadDir,
+    })
 
-	for _, app := range apps {
-		app.Init(r)
-	}
+    musicStorageApp := ms.NewMusicStorageApp(mongoDB, pgDB, esClient, tusHandler) 
+    apps = append(apps, musicStorageApp)
+
+    for _, app := range apps {
+        app.Init(r)
+    }
 }
 
 // ENV:
@@ -101,4 +120,47 @@ func initLogging() *os.File {
 	log.SetLevel(log.InfoLevel)
 
 	return file
+}
+
+func initMongoDB() *mongo.Client {
+    MongoUser := os.Getenv("MONGO_INITDB_ROOT_USERNAME")
+    MongoPassword := os.Getenv("MONGO_INITDB_ROOT_PASSWORD")
+
+    uri := fmt.Sprintf("mongodb://%s:%s@localhost:27017", MongoUser, MongoPassword)
+    clientOptions := options.Client().ApplyURI(uri)
+
+    client, err := mongo.Connect(context.TODO(), clientOptions)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    err = client.Ping(context.TODO(), nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Info("Connected to MongoDB!")
+
+    return client
+}
+
+func initElasticSearch() *elasticsearch.Client {
+    cfg := elasticsearch.Config{
+        Username: ElasticUser,
+        Password: ElasticPassword,
+    }
+
+    es, err := elasticsearch.NewClient(cfg)
+    if err != nil {
+        log.Fatalf("Error creating the ElasticSearch client: %s", err)
+    }
+
+    res, err := es.Info()
+    if err != nil {
+        log.Fatalf("Error getting ElasticSearch info: %s", err)
+    }
+    defer res.Body.Close()
+
+    log.Info("Connected to ElasticSearch!")
+    return es
 }

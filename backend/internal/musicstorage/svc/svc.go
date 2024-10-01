@@ -3,18 +3,24 @@ package svc
 import (
 	"errors"
 	"strings"
-	. "untitled/internal/musicstorage/repo"
+	"time"
 	. "untitled/internal/musicstorage/mdl"
+	. "untitled/internal/musicstorage/repo"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type MusicSvc struct {
-	Repo *TrackRepo
+	PgRepo    *PgRepo    
+	MongoRepo *MongoRepo 
 }
 
-func NewMusicSvc(repo *TrackRepo) *MusicSvc {
-	return &MusicSvc{Repo: repo}
+func NewMusicSvc(pgRepo *PgRepo, mongoRepo *MongoRepo) *MusicSvc {
+	return &MusicSvc{
+		PgRepo:    pgRepo,
+		MongoRepo: mongoRepo,
+	}
 }
 
 func GetUUIDFromLocation(location string) string {
@@ -36,30 +42,100 @@ func GetCurrentUserID(c *gin.Context) (int64, error) {
 	return id, nil
 }
 
-func (svc *MusicSvc) UpdateTrackMetadata(trackID int64, req UpdateTrackMetadataRequest) error {
-	track, err := svc.Repo.GetByID(trackID)
-	if err != nil {
+func (svc *MusicSvc) CreateTrack(req TrackRequest, userID int64) error {
+	now := time.Now()
+
+	newTrackPg := Track_PG{
+		UUID:      uuid.New(),
+		UserID:    userID,
+		CreatedAt: &now,
+		UpdatedAt: &now,
+	}
+	newTrackMongo := Track_MONGO{
+		ID:       newTrackPg.UUID, 
+		Title:    req.Title,
+		Artist:   req.Artist,
+		Album:    req.Album,
+		Format:   req.Format,
+		Duration: req.Duration,
+		Genre:    req.Genre,
+	}
+
+	if err := svc.PgRepo.CreateTrack(&newTrackPg); err != nil {
+		return err
+	}
+	if err := svc.MongoRepo.CreateTrack(newTrackMongo); err != nil {
 		return err
 	}
 
-	if req.Title != "" {
-		track.Title = req.Title
+	return nil
+}
+
+func (svc *MusicSvc) UpdateTrackPtrByUUID(trackUUID string) error {
+	if err := svc.MongoRepo.UpdateTrackPtr(trackUUID); err != nil {
+		return err
 	}
-	if req.Artist != "" {
-		track.Artist = req.Artist
+	return nil
+}
+
+func (svc *MusicSvc) DeleteTrackByID(trackID uuid.UUID) error {
+	if err := svc.PgRepo.DeleteTrackByID(trackID); err != nil {
+		return err
 	}
-	if req.Format != "" {
-		track.Format = req.Format
+	if err := svc.MongoRepo.DeleteTrackByID(trackID); err != nil {
+		return err
 	}
-	if req.Bitrate != nil {
-		track.Bitrate = req.Bitrate
-	}
-	if req.Duration != nil {
-		track.Duration = req.Duration
-	}
-	if req.Genre != nil {
-		track.Genre = req.Genre
+	return nil
+}
+
+func (svc *MusicSvc) UpdateTrackMetadata(trackID uuid.UUID, req TrackRequest) error {
+	if err := svc.PgRepo.UpdateTrackMetadata(trackID); err != nil {
+		return err
 	}
 
-	return svc.Repo.Update(track)
+	if err := svc.MongoRepo.UpdateTrackMetadata(trackID, req); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (svc *MusicSvc) ListTracks() ([]*Track, error) {
+	tracksPG, err := svc.PgRepo.ListTracks()
+	if err != nil {
+		return nil, err
+	}
+
+	var combinedTracks []*Track
+
+	for _, trackPG := range tracksPG {
+		trackMongo, err := svc.MongoRepo.GetTrackByID(trackPG.UUID)
+		if err != nil {
+			continue
+		}
+		combinedTrack := &Track{
+			Track_PG:   trackPG,
+			Track_MONGO: *trackMongo,
+		}
+		combinedTracks = append(combinedTracks, combinedTrack)
+	}
+
+	return combinedTracks, nil
+}
+
+func (svc *MusicSvc) GetTrackByID(trackID uuid.UUID) (*Track, error) {
+	trackPG, err := svc.PgRepo.GetTrackByID(trackID)
+	if err != nil {
+		return nil, err
+	}
+
+	trackMongo, err := svc.MongoRepo.GetTrackByID(trackID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Track{
+		Track_PG:   *trackPG,
+		Track_MONGO: *trackMongo,
+	}, nil
 }

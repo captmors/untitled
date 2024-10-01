@@ -2,16 +2,17 @@ package ctl
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
+	"github.com/tus/tusd/v2/pkg/handler"
+
 	. "untitled/internal/musicstorage/mdl"
 	. "untitled/internal/musicstorage/svc"
 
-	log "github.com/sirupsen/logrus"
-
-	"github.com/gin-gonic/gin"
-	"github.com/tus/tusd/v2/pkg/handler"
+	"github.com/google/uuid"
 )
 
 type MusicCtl struct {
@@ -24,7 +25,7 @@ func NewMusicCtl(musicSvc *MusicSvc, tusHandler *handler.UnroutedHandler) *Music
 }
 
 func (ctl *MusicCtl) UploadTrack(c *gin.Context) {
-	var req UploadTrackRequest
+	var req TrackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -50,8 +51,7 @@ func (ctl *MusicCtl) UploadTrack(c *gin.Context) {
 
 	var wg sync.WaitGroup
 	var uploadStatus int
-	var uuid string
-	var newTrackID int64
+	var trackUUID string
 
 	// upload file resumably 
 	wg.Add(1)
@@ -60,7 +60,7 @@ func (ctl *MusicCtl) UploadTrack(c *gin.Context) {
 		log.Info("Starting file upload")
 		ctl.tusHandler.PostFile(c.Writer, c.Request)
 		uploadStatus = c.Writer.Status()
-		uuid = GetUUIDFromLocation(c.Writer.Header().Get("Location"))
+		trackUUID = GetUUIDFromLocation(c.Writer.Header().Get("Location"))
 		log.Info("File upload completed")
 	}()
 
@@ -74,57 +74,41 @@ func (ctl *MusicCtl) UploadTrack(c *gin.Context) {
 			return
 		}
 
-		newTrack := Track{
-			UserID:   int64(userID),
-			Title:    req.Title,
-			Artist:   req.Artist,
-			Format:   req.Format,
-			Bitrate:  req.Bitrate,
-			Duration: req.Duration,
-			Genre:    req.Genre,
-		}
-
-		if err := ctl.Svc.Repo.Create(&newTrack); err != nil {
+		if err := ctl.Svc.CreateTrack(req, userID); err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Failed to save track")
 			return
 		}
-
-		newTrackID = newTrack.ID
-		log.WithFields(log.Fields{"track_id": newTrackID}).Info("Track saved successfully")
+		log.Info("Track saved successfully")
 	}()
 
 	wg.Wait()
 
 	if uploadStatus != http.StatusCreated {
-		if err := ctl.Svc.Repo.DeleteByID(newTrackID); err != nil {
-			log.WithFields(log.Fields{"error": err}).Error("Failed to delete track after upload failure")
-		} else {
-			log.WithFields(log.Fields{"track_id": newTrackID}).Info("Track deleted successfully after upload failure")
-		}
-
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload failed"})
 		log.Error("Upload failed with status:", uploadStatus)
 		return
 	}
 
-	// update physical ptr of file defined by uuid
-	if uuid != "" {
-		if err := ctl.Svc.Repo.UpdateTrackPtr(newTrackID, uuid); err != nil {
+
+	// update physical ptr of file defined by uuid	
+	if trackUUID != "" {
+		if err := ctl.Svc.UpdateTrackPtrByUUID(trackUUID); err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Failed to update track UUID ptr")
 		} else {
-			log.WithFields(log.Fields{"uuid": uuid}).Info("Track UUID ptr updated successfully")
+			log.WithFields(log.Fields{"uuid": trackUUID}).Info("Track UUID ptr updated successfully")
 		}
 	}
 }
 
 func (ctl *MusicCtl) RemoveTrack(c *gin.Context) {
-	trackID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-        return
-    }
+	trackIDStr := c.Param("id")
+	trackID, err := uuid.Parse(trackIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
+		return
+	}
 
-	if err := ctl.Svc.Repo.DeleteByID(trackID); err != nil {
+	if err := ctl.Svc.DeleteTrackByID(trackID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete track"})
 		return
 	}
@@ -132,13 +116,14 @@ func (ctl *MusicCtl) RemoveTrack(c *gin.Context) {
 }
 
 func (ctl *MusicCtl) UpdateTrackMetadata(c *gin.Context) {
-	trackID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-        return
-    }
-	
-	var req UpdateTrackMetadataRequest
+	trackIDStr := c.Param("id")
+	trackID, err := uuid.Parse(trackIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
+		return
+	}
+
+	var req TrackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -154,51 +139,64 @@ func (ctl *MusicCtl) UpdateTrackMetadata(c *gin.Context) {
 
 // TODO pagination
 func (ctl *MusicCtl) ListTracks(c *gin.Context) {
-	tracks, err := ctl.Svc.Repo.GetAll()
+	tracks, err := ctl.Svc.ListTracks()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve tracks"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"tracks": tracks})
+	var responseTracks []TrackResponse
+	for _, track := range tracks {
+		responseTracks = append(responseTracks, TrackResponse{
+			Title:    track.Title,
+			Artist:   track.Artist,
+			Duration: track.Duration,
+		})
+	}
+
+	c.JSON(http.StatusOK, ListTracksResponse{Tracks: responseTracks})
 }
 
 func (ctl *MusicCtl) GetTrackByID(c *gin.Context) {
-    trackID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-        return
-    }
+	trackIDStr := c.Param("id")
+	trackID, err := uuid.Parse(trackIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID"})
+		return
+	}
 
-    track, err := ctl.Svc.Repo.GetByID(trackID)
-    if err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": "Track not found"})
-        return
-    }
+	track, err := ctl.Svc.GetTrackByID(trackID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Track not found"})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{"track": track})
+	c.JSON(http.StatusOK, TrackResponse{
+		Title:    track.Title,
+		Artist:   track.Artist,
+		Duration: track.Duration,
+	})
 }
 
 func (ctl *MusicCtl) PlayTrack(c *gin.Context) {
-    // Получаем трек по ID или UUID
-    trackID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid track ID"})
-        return
-    }
+	trackIDStr := c.Param("id")
+	trackID, err := uuid.Parse(trackIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid track ID"})
+		return
+	}
 
-    track, err := ctl.Svc.Repo.GetByID(trackID)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Track not found"})
-        return
-    }
+	track, err := ctl.Svc.GetTrackByID(trackID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Track not found"})
+		return
+	}
 
-    if track.Ptr == "" {
-        c.JSON(http.StatusNotFound, gin.H{"error": "Track file not found"})
-        return
-    }
+	if track.Ptr == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Track file not found"})
+		return
+	}
 
-    // Возвращаем ссылку на трек по UUID
-    trackURL := "/upload/" + track.Ptr
-    c.JSON(http.StatusOK, gin.H{"track_url": trackURL})
+	trackURL := "/upload/" + *track.Ptr
+	c.JSON(http.StatusOK, gin.H{"track_url": trackURL})
 }
