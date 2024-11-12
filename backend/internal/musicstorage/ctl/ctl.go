@@ -53,7 +53,7 @@ func (ctl *MusicCtl) UploadTrack(c *gin.Context) {
 	var uploadStatus int
 	var trackUUID string
 
-	// upload file resumably 
+	// upload file resumably
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -89,8 +89,7 @@ func (ctl *MusicCtl) UploadTrack(c *gin.Context) {
 		return
 	}
 
-
-	// update physical ptr of file defined by uuid	
+	// update physical ptr of file defined by uuid
 	if trackUUID != "" {
 		if err := ctl.Svc.UpdateTrackPtrByUUID(trackUUID); err != nil {
 			log.WithFields(log.Fields{"error": err}).Error("Failed to update track UUID ptr")

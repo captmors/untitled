@@ -12,8 +12,9 @@ import (
 )
 
 type MusicSvc struct {
-	PgRepo    *PgRepo    
-	MongoRepo *MongoRepo 
+	PgRepo    *PgRepo
+	MongoRepo *MongoRepo
+	ESRepo    *ElasticRepo
 }
 
 func NewMusicSvc(pgRepo *PgRepo, mongoRepo *MongoRepo) *MusicSvc {
@@ -52,7 +53,7 @@ func (svc *MusicSvc) CreateTrack(req TrackRequest, userID int64) error {
 		UpdatedAt: &now,
 	}
 	newTrackMongo := Track_MONGO{
-		ID:       newTrackPg.UUID, 
+		ID:       newTrackPg.UUID,
 		Title:    req.Title,
 		Artist:   req.Artist,
 		Album:    req.Album,
@@ -114,7 +115,7 @@ func (svc *MusicSvc) ListTracks() ([]*Track, error) {
 			continue
 		}
 		combinedTrack := &Track{
-			Track_PG:   trackPG,
+			Track_PG:    trackPG,
 			Track_MONGO: *trackMongo,
 		}
 		combinedTracks = append(combinedTracks, combinedTrack)
@@ -135,7 +136,7 @@ func (svc *MusicSvc) GetTrackByID(trackID uuid.UUID) (*Track, error) {
 	}
 
 	return &Track{
-		Track_PG:   *trackPG,
+		Track_PG:    *trackPG,
 		Track_MONGO: *trackMongo,
 	}, nil
 }
