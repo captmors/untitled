@@ -1,14 +1,27 @@
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import PropTypes from 'prop-types';
+import { usePlaylists } from '../hooks/useMusic';
 
 const PlaylistCarousel = ({ title }) => {
-  const playlists = [
-    { id: 1, name: "Today's Hits", imageUrl: "/api/placeholder/200/200", songs: "50 songs" },
-    { id: 2, name: "Chill Vibes", imageUrl: "/api/placeholder/200/200", songs: "45 songs" },
-    { id: 3, name: "Rock Classics", imageUrl: "/api/placeholder/200/200", songs: "75 songs" },
-    { id: 4, name: "Jazz Essentials", imageUrl: "/api/placeholder/200/200", songs: "30 songs" },
-    { id: 5, name: "Workout Mix", imageUrl: "/api/placeholder/200/200", songs: "60 songs" },
-  ];
+  const { playlists, loading, error } = usePlaylists();
+
+  if (loading) {
+    return (
+      <div className="mt-20 px-4">
+        <h2 className="text-2xl font-bold text-white">{title}</h2>
+        <div className="mt-4 text-gray-400">Loading playlists...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mt-20 px-4">
+        <h2 className="text-2xl font-bold text-white">{title}</h2>
+        <div className="mt-4 text-red-500">Error loading playlists: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-20 px-4">
@@ -32,7 +45,7 @@ const PlaylistCarousel = ({ title }) => {
           >
             <div className="relative group">
               <img 
-                src={playlist.imageUrl} 
+                src={playlist.imageUrl || "/api/placeholder/200/200"} 
                 alt={playlist.name}
                 className="w-full aspect-square object-cover rounded-md"
               />
@@ -41,7 +54,7 @@ const PlaylistCarousel = ({ title }) => {
               </button>
             </div>
             <h3 className="mt-2 text-white font-semibold">{playlist.name}</h3>
-            <p className="text-gray-400 text-sm">{playlist.songs}</p>
+            <p className="text-gray-400 text-sm">{playlist.songCount} songs</p>
           </div>
         ))}
       </div>
@@ -50,7 +63,7 @@ const PlaylistCarousel = ({ title }) => {
 };
 
 PlaylistCarousel.propTypes = {
-    title: PropTypes.string.isRequired,
-  };
+  title: PropTypes.string.isRequired,
+};
 
 export default PlaylistCarousel;

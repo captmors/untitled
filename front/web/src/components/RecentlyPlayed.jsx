@@ -1,13 +1,35 @@
 import { Play } from 'lucide-react';
+import { useRecentlyPlayed } from '../hooks/useMusic';
 
 const RecentlyPlayed = () => {
-  const recentTracks = [
-    { id: 1, name: "Song Name 1", artist: "Artist 1", duration: "3:45", imageUrl: "/api/placeholder/50/50" },
-    { id: 2, name: "Song Name 2", artist: "Artist 2", duration: "4:20", imageUrl: "/api/placeholder/50/50" },
-    { id: 3, name: "Song Name 3", artist: "Artist 3", duration: "3:15", imageUrl: "/api/placeholder/50/50" },
-    { id: 4, name: "Song Name 4", artist: "Artist 4", duration: "2:55", imageUrl: "/api/placeholder/50/50" },
-    { id: 5, name: "Song Name 5", artist: "Artist 5", duration: "3:30", imageUrl: "/api/placeholder/50/50" },
-  ];
+  const { recentTracks, loading, error, addRecentlyPlayed } = useRecentlyPlayed();
+
+  if (loading) {
+    return (
+      <div className="px-4 mt-8">
+        <h2 className="text-2xl font-bold text-white">Recently Played</h2>
+        <div className="mt-4 text-gray-400">Loading recently played tracks...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="px-4 mt-8">
+        <h2 className="text-2xl font-bold text-white">Recently Played</h2>
+        <div className="mt-4 text-red-500">Error loading tracks: {error}</div>
+      </div>
+    );
+  }
+
+  const handlePlay = async (trackId) => {
+    try {
+      await addRecentlyPlayed(trackId);
+      // TODO play logic 
+    } catch (err) {
+      console.error('Failed to update recently played:', err);
+    }
+  };
 
   return (
     <div className="px-4 mt-8">
@@ -25,21 +47,21 @@ const RecentlyPlayed = () => {
             <div className="w-8 text-gray-400">{index + 1}</div>
             <div className="flex-1 flex items-center">
               <img 
-                src={track.imageUrl} 
+                src={track.imageUrl || "/api/placeholder/50/50"} 
                 alt={track.name}
                 className="w-10 h-10 rounded mr-4"
               />
               <div>
                 <div className="text-white">{track.name}</div>
-                <div className="text-gray-400 text-sm">{track.artist}</div>
+                <div className="text-gray-400">{track.artist}</div>
               </div>
             </div>
-            <div className="w-32 flex items-center justify-end space-x-4">
-              <button className="invisible group-hover:visible">
-                <Play className="h-4 w-4 text-white" />
-              </button>
-              <span className="text-gray-400">{track.duration}</span>
-            </div>
+            <button 
+              onClick={() => handlePlay(track.id)}
+              className="ml-4 text-gray-400 hover:text-white group-hover:text-white"
+            >
+              <Play size={20} />
+            </button>
           </div>
         ))}
       </div>

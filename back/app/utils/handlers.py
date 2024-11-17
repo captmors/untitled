@@ -1,6 +1,14 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from app.auth.utils import create_admin_role_and_user
+from app.utils.dao.session_maker import session_manager
+
+async def lifespan(app: FastAPI):
+    async with session_manager.create_session() as session:
+        await create_admin_role_and_user(session)
+        
+    yield
 
 def add_exception_handlers(app: FastAPI):
     @app.exception_handler(HTTPException)
@@ -18,9 +26,14 @@ def add_exception_handlers(app: FastAPI):
         )
 
 def add_cors_middleware(app: FastAPI):
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        ]
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  
+        allow_origins=origins,  
         allow_credentials=True,
         allow_methods=["*"],  
         allow_headers=["*"], 

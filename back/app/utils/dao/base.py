@@ -1,4 +1,4 @@
-from typing import List, Any, TypeVar, Generic
+from typing import List, Any, Optional, TypeVar, Generic
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.future import select
@@ -51,12 +51,43 @@ class BaseDAO(Generic[T]):
             raise
 
     @classmethod
-    async def find_all(cls, session: AsyncSession, filters: BaseModel | None):
+    async def find_all(
+        cls,
+        session: AsyncSession,
+        filters: BaseModel | dict | None,
+        limit: int = None,
+        order_by: Optional[List[tuple]] = None
+        ):
+        """
+        Пример использования:
+        ---------------------
+        >>> await RecentlyPlayedDAO.find_all(
+        >>>     session=session,
+        >>>     filters={"user_id": user_id},
+        >>>     limit=5,
+        >>>     order_by=[("played_at", True)] // True - в порядке убывания
+        >>> )
+        """
         # Find all records matching filters
-        filter_dict = filters.model_dump(exclude_unset=True) if filters else {}
-        logger.info(f"Searching for all {cls.model.__name__} records with filters: {filter_dict}")
+        filter_dict = filters.model_dump(exclude_unset=True) if isinstance(filters, BaseModel) else filters if isinstance(filters, dict) else {}
+        query = select(cls.model).filter_by(**filter_dict)
+        
+        if order_by:
+            order_criteria = [
+                getattr(cls.model, column_name).desc() if descending else getattr(cls.model, column_name).asc()
+                for column_name, descending in order_by
+            ]
+            query = query.order_by(*order_criteria)
+        
+        if limit:
+            query = query.limit(limit)
+            
+        logger.info(
+            f"Searching for all {cls.model.__name__} records with filters: {filter_dict}, "
+            f"order_by: {order_by}, limit: {limit}"
+        )
+            
         try:
-            query = select(cls.model).filter_by(**filter_dict)
             result = await session.execute(query)
             records = result.scalars().all()
             logger.info(f"Found {len(records)} records.")

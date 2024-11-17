@@ -1,7 +1,6 @@
 import re
 from typing import Self
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator, computed_field
-from app.auth.utils import get_password_hash
 
 
 class EmailModel(BaseModel):
@@ -14,12 +13,6 @@ class UserBase(EmailModel):
     first_name: str = Field(min_length=3, max_length=50, description="Имя, от 3 до 50 символов")
     last_name: str = Field(min_length=3, max_length=50, description="Фамилия, от 3 до 50 символов")
 
-    @field_validator("phone_number")
-    def validate_phone_number(cls, value: str) -> str:
-        if not re.match(r'^\+\d{5,15}$', value):
-            raise ValueError('Номер телефона должен начинаться с "+" и содержать от 5 до 15 цифр')
-        return value
-
 
 class SUserRegister(UserBase):
     password: str = Field(min_length=5, max_length=50, description="Пароль, от 5 до 50 знаков")
@@ -27,6 +20,8 @@ class SUserRegister(UserBase):
 
     @model_validator(mode="after")
     def check_password(self) -> Self:
+        from app.auth.utils import get_password_hash
+        
         if self.password != self.confirm_password:
             raise ValueError("Пароли не совпадают")
         self.password = get_password_hash(self.password)  # хешируем пароль до сохранения в базе данных

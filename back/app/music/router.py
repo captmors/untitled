@@ -39,7 +39,7 @@ async def get_recently_played(
         session=session,
         filters={"user_id": current_user.id},
         limit=limit,
-        order_by=[("-played_at", True)]
+        order_by=[("played_at", True)]
     )
 
 @router.post("/recently-played/{song_id}")
