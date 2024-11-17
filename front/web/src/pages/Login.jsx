@@ -29,7 +29,7 @@ const Login = () => {
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="bg-gray-800 shadow-lg rounded-lg px-8 pt-6 pb-8 mb-4">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Login to MusicApp</h2>
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">Login</h2>
           
           {error && (
             <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded mb-4">

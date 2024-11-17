@@ -19,9 +19,11 @@ const Header = () => {
     <header className="fixed top-0 left-0 right-0 bg-gray-900 text-white z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold">MusicApp</h1>
-          </div>
+        <div className="flex items-center space-x-4">
+          <a href="/" className="text-xl font-bold">
+            MusicApp
+          </a>
+        </div>
 
           <div className="flex-1 max-w-xl mx-4">
             <div className="relative">
