@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.utils.dao.database import Base, str_uniq
@@ -16,9 +17,10 @@ class User(Base):
     first_name: Mapped[str]
     last_name: Mapped[str]
     email: Mapped[str_uniq]
-    password: Mapped[str]
+    password: Mapped[str]    
     role_id: Mapped[int] = mapped_column(ForeignKey('roles.id'), default=1, server_default=text("1"))
     role: Mapped["Role"] = relationship("Role", back_populates="users", lazy="joined")
+    avatar_url: Mapped[Optional[str]] = mapped_column(nullable=True)
     
     def __repr__(self):
         return f"{self.__class__.__name__}(id={self.id})"

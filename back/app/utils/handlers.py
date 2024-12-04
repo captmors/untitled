@@ -3,11 +3,17 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth.utils import create_admin_role_and_user
 from app.utils.dao.session_maker import session_manager
+from app.utils.s3.routine import minio_routine
+from loguru import logger 
 
 async def lifespan(app: FastAPI):
+    logger.info("Database routines...")
     async with session_manager.create_session() as session:
         await create_admin_role_and_user(session)
-        
+    
+    logger.info("Minio routine...")        
+    minio_routine()
+    
     yield
 
 def add_exception_handlers(app: FastAPI):
