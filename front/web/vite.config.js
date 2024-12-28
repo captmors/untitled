@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '^/(auth|music)/.*': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8001',
         changeOrigin: true,
       }
     },

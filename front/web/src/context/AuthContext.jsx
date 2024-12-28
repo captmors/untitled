@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('auth/get-admin/');
+      const response = await fetch('auth/me/');
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
